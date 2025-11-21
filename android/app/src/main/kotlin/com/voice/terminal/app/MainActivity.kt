@@ -1,4 +1,4 @@
-package com.example.tmux_voice
+package com.voice.terminal.app
 
 import io.flutter.embedding.android.FlutterActivity
 

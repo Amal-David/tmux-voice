@@ -13,10 +13,11 @@ import '../../settings/models/voice_settings.dart';
 import '../../settings/state/voice_settings_notifier.dart';
 import '../models/voice_command_state.dart';
 import '../services/command_generation_service.dart';
+import '../services/device_speech_service.dart';
 import '../services/speech_to_text_service.dart';
 
-final recordProvider = Provider<Record>((ref) {
-  final recorder = Record();
+final recordProvider = Provider<AudioRecorder>((ref) {
+  final recorder = AudioRecorder();
   ref.onDispose(recorder.dispose);
   return recorder;
 });
@@ -31,12 +32,19 @@ final commandGenerationServiceProvider = Provider<CommandGenerationService>((ref
   return CommandGenerationService(client);
 });
 
+final deviceSpeechServiceProvider = Provider<DeviceSpeechService>((ref) {
+  final service = DeviceSpeechService();
+  ref.onDispose(service.dispose);
+  return service;
+});
+
 final voiceCommandControllerProvider =
     StateNotifierProvider<VoiceCommandController, VoiceCommandState>((ref) {
   final recorder = ref.watch(recordProvider);
   final stt = ref.watch(speechToTextServiceProvider);
   final generator = ref.watch(commandGenerationServiceProvider);
-  return VoiceCommandController(ref, recorder, stt, generator);
+  final deviceSpeech = ref.watch(deviceSpeechServiceProvider);
+  return VoiceCommandController(ref, recorder, stt, generator, deviceSpeech);
 });
 
 class VoiceCommandController extends StateNotifier<VoiceCommandState> {
@@ -45,13 +53,16 @@ class VoiceCommandController extends StateNotifier<VoiceCommandState> {
     this._recorder,
     this._speechToText,
     this._commandGenerator,
+    this._deviceSpeech,
   ) : super(const VoiceCommandState.idle());
 
   final Ref _ref;
-  final Record _recorder;
+  final AudioRecorder _recorder;
   final SpeechToTextService _speechToText;
   final CommandGenerationService _commandGenerator;
+  final DeviceSpeechService _deviceSpeech;
   String? _currentRecordingPath;
+  String _deviceTranscript = '';
 
   Future<void> startRecording() async {
     if (state.isRecording || state.isProcessing) return;
@@ -64,21 +75,81 @@ class VoiceCommandController extends StateNotifier<VoiceCommandState> {
       return;
     }
 
+    if (_useDeviceStt()) {
+      final started = await _deviceSpeech.startListening(onPartial: (partial) {
+        state = state.copyWith(transcript: partial);
+      });
+      if (!started) {
+        state = const VoiceCommandState(
+          status: VoiceCommandStatus.error,
+          errorMessage: 'Device speech recognition is unavailable.',
+        );
+        return;
+      }
+      _deviceTranscript = '';
+      state = const VoiceCommandState(status: VoiceCommandStatus.recording);
+      return;
+    }
+
     final dir = await getTemporaryDirectory();
     _currentRecordingPath =
         '${dir.path}/tmux_voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
     await _recorder.start(
-      path: _currentRecordingPath,
-      encoder: AudioEncoder.aacLc,
-      bitRate: 128000,
-      samplingRate: 44100,
+      RecordConfig(
+        encoder: AudioEncoder.aacLc,
+        bitRate: 128000,
+        sampleRate: 44100,
+      ),
+      path: _currentRecordingPath!,
     );
 
     state = const VoiceCommandState(status: VoiceCommandStatus.recording);
   }
 
-  Future<String?> stopAndProcess() async {
+  Future<String?> stopAndProcess({String? contextString}) async {
+    if (_useDeviceStt()) {
+      if (!state.isRecording) return null;
+      state = const VoiceCommandState(status: VoiceCommandStatus.processing);
+      try {
+        _deviceTranscript = await _deviceSpeech.stopListening();
+      } catch (_) {
+        await _deviceSpeech.cancel();
+        state = const VoiceCommandState(
+          status: VoiceCommandStatus.error,
+          errorMessage: 'Unable to capture voice input.',
+        );
+        return null;
+      }
+
+      if (_deviceTranscript.isEmpty) {
+        state = const VoiceCommandState(
+          status: VoiceCommandStatus.error,
+          errorMessage: 'Heard silence. Please try again.',
+        );
+        return null;
+      }
+
+      try {
+        final command = await _generateCommandFromTranscript(
+          transcript: _deviceTranscript,
+          contextString: contextString,
+        );
+        state = VoiceCommandState(
+          status: VoiceCommandStatus.success,
+          transcript: _deviceTranscript,
+          command: command,
+        );
+        return command;
+      } catch (error) {
+        state = VoiceCommandState(
+          status: VoiceCommandStatus.error,
+          errorMessage: error.toString(),
+        );
+        return null;
+      }
+    }
+
     if (_currentRecordingPath == null) {
       return null;
     }
@@ -99,27 +170,10 @@ class VoiceCommandController extends StateNotifier<VoiceCommandState> {
     state = const VoiceCommandState(status: VoiceCommandStatus.processing);
 
     try {
-      final settings = _currentSettings();
-      final groqKey = settings?.groqApiKey?.isNotEmpty == true
-          ? settings!.groqApiKey!
-          : _requireEnvKey(EnvKeys.groqApiKey);
-      final sttModel = _sttModel(settings?.sttProvider ?? SttProvider.groqWhisper);
-      final transcript = await _speechToText.transcribe(
-        audioFile: file,
-        apiKey: groqKey,
-        model: sttModel,
-      );
-
-      final geminiKey = settings?.geminiApiKey?.isNotEmpty == true
-          ? settings!.geminiApiKey!
-          : _requireEnvKey(EnvKeys.geminiApiKey);
-      final llmModel = _llmModel(settings?.llmProvider ?? LlmProvider.geminiFlash);
-      final prompt = await rootBundle.loadString(Assets.commandPrompt);
-      final command = await _commandGenerator.generateCommand(
+      final transcript = await _transcribeRemote(file);
+      final command = await _generateCommandFromTranscript(
         transcript: transcript,
-        prompt: prompt,
-        apiKey: geminiKey,
-        model: llmModel,
+        contextString: contextString,
       );
 
       state = VoiceCommandState(
@@ -167,6 +221,8 @@ class VoiceCommandController extends StateNotifier<VoiceCommandState> {
     switch (provider) {
       case SttProvider.groqWhisper:
         return VoiceModels.groqStt;
+      case SttProvider.device:
+        return '';
     }
   }
 
@@ -177,5 +233,42 @@ class VoiceCommandController extends StateNotifier<VoiceCommandState> {
       case LlmProvider.geminiPro:
         return VoiceModels.geminiPro;
     }
+  }
+
+  bool _useDeviceStt() {
+    final settings = _currentSettings();
+    return (settings?.sttProvider ?? SttProvider.groqWhisper) == SttProvider.device;
+  }
+
+  Future<String> _transcribeRemote(File file) async {
+    final settings = _currentSettings();
+    final groqKey = settings?.groqApiKey?.isNotEmpty == true
+        ? settings!.groqApiKey!
+        : _requireEnvKey(EnvKeys.groqApiKey);
+    final sttModel = _sttModel(settings?.sttProvider ?? SttProvider.groqWhisper);
+    return _speechToText.transcribe(
+      audioFile: file,
+      apiKey: groqKey,
+      model: sttModel,
+    );
+  }
+
+  Future<String> _generateCommandFromTranscript({
+    required String transcript,
+    String? contextString,
+  }) async {
+    final settings = _currentSettings();
+    final geminiKey = settings?.geminiApiKey?.isNotEmpty == true
+        ? settings!.geminiApiKey!
+        : _requireEnvKey(EnvKeys.geminiApiKey);
+    final llmModel = _llmModel(settings?.llmProvider ?? LlmProvider.geminiFlash);
+    final prompt = await rootBundle.loadString(Assets.commandPrompt);
+    return _commandGenerator.generateCommand(
+      transcript: transcript,
+      prompt: prompt,
+      apiKey: geminiKey,
+      model: llmModel,
+      context: contextString,
+    );
   }
 }

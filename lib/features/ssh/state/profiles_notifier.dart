@@ -20,9 +20,15 @@ class ProfilesNotifier extends StateNotifier<AsyncValue<List<SshProfile>>> {
   }
 
   Future<void> addProfile(SshProfile profile) async {
+    print('[ProfilesNotifier Debug] === ADD PROFILE ===');
+    print('[ProfilesNotifier Debug] Profile password length: ${profile.password?.length ?? 0}');
+    print('[ProfilesNotifier Debug] Profile private key length: ${profile.privateKey?.length ?? 0}');
+    
     final current = _requireProfiles();
     final updated = [...current, profile];
     await _persist(updated);
+    
+    print('[ProfilesNotifier Debug] Persisted ${updated.length} profiles total');
   }
 
   Future<void> updateProfile(int index, SshProfile profile) async {

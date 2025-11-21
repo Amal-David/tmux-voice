@@ -1,10 +1,12 @@
 
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../ssh/models/ssh_session_state.dart';
+import '../../../core/app_theme.dart';
 
 class StackedSessionDeck extends StatelessWidget {
   const StackedSessionDeck({
@@ -213,61 +215,58 @@ class _CardSurface extends StatelessWidget {
     final theme = Theme.of(context);
     final accent = theme.colorScheme.primary;
 
-    return Container(
-      height: _DeckCardState._baseHeight,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(isNow ? 22 : 18),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF111527), Color(0xFF090B14)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        border: Border.all(
-          color: isNow ? accent.withOpacity(0.35) : Colors.white10,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isNow ? 0.35 : 0.25),
-            blurRadius: isNow ? 30 : 20,
-            spreadRadius: 0,
-            offset: const Offset(0, 12),
+    final radius = BorderRadius.circular(isNow ? 22 : 18);
+    return ClipRRect(
+      borderRadius: radius,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          height: _DeckCardState._baseHeight,
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            color: Colors.white.withOpacity(0.85),
+            border: Border.all(
+              color: Colors.white.withOpacity(isNow ? 0.6 : 0.4),
+              width: 1,
+            ),
+            boxShadow: AppTheme.elevation1,
           ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isNow)
-                      Text(
-                        'Now',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: accent,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.6,
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isNow)
+                          Text(
+                            'Now',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: accent,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                        Text(
+                          session.profile.label,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
                         ),
-                      ),
-                    Text(
-                      session.profile.label,
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
               _StatusPill(status: session.status),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             '${session.profile.username}@${session.profile.host}:${session.profile.port}',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
+            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 8),
           if (session.lastCommand != null)
@@ -275,12 +274,12 @@ class _CardSurface extends StatelessWidget {
               'Last: ${session.lastCommand}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
+              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textTertiary),
             )
           else
             Text(
               'Connected ${_timeString(session.connectedAt)}',
-              style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
+              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textTertiary),
             ),
           const Spacer(),
           Row(
@@ -312,6 +311,8 @@ class _CardSurface extends StatelessWidget {
           ),
         ],
       ),
+        ),
+      ),
     );
   }
 
@@ -332,10 +333,15 @@ class _DeckActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton.tonalIcon(
+    return TextButton.icon(
       onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
+      icon: Icon(icon, size: 18, color: AppTheme.textPrimary),
+      label: Text(label, style: const TextStyle(color: AppTheme.textPrimary)),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        backgroundColor: AppTheme.surfaceFilled,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
     );
   }
 }
@@ -348,16 +354,16 @@ class _StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = {
-      SshSessionStatus.connected: Colors.greenAccent.withOpacity(0.8),
-      SshSessionStatus.connecting: Colors.orangeAccent,
-      SshSessionStatus.disconnected: Colors.white24,
-      SshSessionStatus.error: Colors.redAccent,
+      SshSessionStatus.connected: AppTheme.successGreen,
+      SshSessionStatus.connecting: AppTheme.warningYellow,
+      SshSessionStatus.disconnected: AppTheme.textTertiary,
+      SshSessionStatus.error: AppTheme.errorRed,
     };
     final color = colors[status] ?? Colors.white70;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -369,7 +375,10 @@ class _StatusPill extends StatelessWidget {
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
-          Text(status.name, style: const TextStyle(fontSize: 12)),
+          Text(
+            status.name,
+            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+          ),
         ],
       ),
     );

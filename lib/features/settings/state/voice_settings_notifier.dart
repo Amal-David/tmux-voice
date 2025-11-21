@@ -50,6 +50,12 @@ class VoiceSettingsNotifier extends StateNotifier<AsyncValue<VoiceSettings>> {
     await updateSettings(updated);
   }
 
+  Future<void> setVoiceEnabled(bool enabled) async {
+    final current = _requireSettings();
+    final updated = current.copyWith(voiceEnabled: enabled);
+    await updateSettings(updated);
+  }
+
   VoiceSettings _requireSettings() {
     return state.maybeWhen(data: (settings) => settings, orElse: () => VoiceSettings.defaults);
   }

@@ -12,17 +12,27 @@ class CommandGenerationService {
     required String prompt,
     required String apiKey,
     required String model,
+    String? context,
   }) async {
     final uri = Uri.parse(
       'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
     );
+
+    final fullPrompt = StringBuffer();
+    fullPrompt.writeln(prompt);
+    if (context != null && context.isNotEmpty) {
+      fullPrompt.writeln('\n--- SCREEN CONTEXT ---');
+      fullPrompt.writeln(context);
+      fullPrompt.writeln('--- END CONTEXT ---\n');
+    }
+    fullPrompt.writeln('User request: $transcript');
 
     final body = jsonEncode({
       'contents': [
         {
           'parts': [
             {
-              'text': '$prompt\n\nUser request: $transcript'
+              'text': fullPrompt.toString(),
             }
           ]
         }
