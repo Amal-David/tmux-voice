@@ -8,16 +8,20 @@ import '../models/monitor_config.dart';
 import '../state/monitoring_provider.dart';
 
 class MonitoringPage extends ConsumerWidget {
-  const MonitoringPage({super.key});
+  const MonitoringPage({super.key, this.sessionId});
+
+  final String? sessionId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final monitorsAsync = ref.watch(activeMonitorsProvider);
+    final monitorsAsync = sessionId != null
+        ? ref.watch(sessionMonitorsProvider(sessionId!))
+        : ref.watch(activeMonitorsProvider);
     final alertsAsync = ref.watch(recentAlertsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Server Monitoring'),
+        title: Text(sessionId != null ? 'Session Monitoring' : 'Server Monitoring'),
         actions: [
           IconButton(
             icon: const Icon(Icons.history),

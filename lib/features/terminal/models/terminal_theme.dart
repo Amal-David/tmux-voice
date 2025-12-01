@@ -298,7 +298,36 @@ class AppTerminalThemes {
     ],
   );
 
+  // Calm Light Theme
+  static const calmLight = AppTerminalTheme(
+    id: 'calm-light',
+    name: 'Calm Light',
+    background: Color(0xFFFFFFFF),
+    foreground: Color(0xFF1D1D1F),
+    cursor: Color(0xFF1D1D1F),
+    selection: Color(0xFFD6E9FF),
+    ansiColors: [
+      Color(0xFF1D1D1F), // black
+      Color(0xFFFF6A6A), // red
+      Color(0xFFA5E4B5), // green
+      Color(0xFFFFEAA7), // yellow
+      Color(0xFFD6E9FF), // blue
+      Color(0xFFEBDEF8), // magenta
+      Color(0xFFCCF0E1), // cyan
+      Color(0xFFF6F6F7), // white
+      Color(0xFF5C5C5F), // bright black
+      Color(0xFFFF8A8A), // bright red
+      Color(0xFFC5F4D5), // bright green
+      Color(0xFFFFF0C7), // bright yellow
+      Color(0xFFE6F2FF), // bright blue
+      Color(0xFFF3E8FF), // bright magenta
+      Color(0xFFE0F7FA), // bright cyan
+      Color(0xFFFFFFFF), // bright white
+    ],
+  );
+
   static const List<AppTerminalTheme> all = [
+    calmLight,
     dracula,
     oneDark,
     monokai,

@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xterm/xterm.dart';
 
+import '../../../core/app_theme.dart';
+import '../../monitoring/views/monitoring_page.dart';
 import '../../ssh/models/ssh_session_state.dart';
 import '../../ssh/state/ssh_providers.dart';
 import '../constants/common_commands.dart';
@@ -78,36 +80,73 @@ class _TerminalPageState extends ConsumerState<TerminalPage> {
 
     final commandHistory = ref.watch(commandHistoryProvider);
     final terminalSettings = ref.watch(terminalSettingsProvider);
-    final theme = AppTerminalThemes.getById(terminalSettings.themeId) ?? AppTerminalThemes.dracula;
+    final theme = AppTerminalThemes.getById(terminalSettings.themeId) ?? AppTerminalThemes.calmLight;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(session.profile.label),
+        title: Column(
+          children: [
+            Text(session.profile.label, style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              '${session.profile.username}@${session.profile.host}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(color: AppTheme.textPrimary),
         actions: [
-          IconButton(
-            tooltip: 'Terminal settings',
-            icon: const Icon(Icons.palette_outlined),
-            onPressed: () => _showTerminalSettings(context),
-          ),
-          IconButton(
-            tooltip: 'View logs',
-            icon: const Icon(Icons.receipt_long),
-            onPressed: () => _showLogsSheet(session.id),
-          ),
-          IconButton(
-            tooltip: 'Server metrics',
-            icon: const Icon(Icons.bar_chart_rounded),
-            onPressed: () => _showMetrics(context, session.id),
-          ),
-          IconButton(
-            tooltip: 'Disconnect',
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(sshSessionsProvider.notifier).disconnect(session.id);
-              if (!mounted) return;
-              Navigator.of(context).pop();
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, size: 20),
+            onSelected: (value) {
+              switch (value) {
+                case 'metrics':
+                  _showMetrics(context, widget.sessionId);
+                  break;
+                case 'monitoring':
+                  _showMonitoring(context);
+                  break;
+                case 'settings':
+                  _showTerminalSettings(context);
+                  break;
+              }
             },
-          )
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'metrics',
+                child: Row(
+                  children: [
+                    Icon(Icons.analytics_outlined, size: 18),
+                    SizedBox(width: 12),
+                    Text('View Metrics'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'monitoring',
+                child: Row(
+                  children: [
+                    Icon(Icons.monitor_heart_outlined, size: 18),
+                    SizedBox(width: 12),
+                    Text('Setup Monitoring'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.tune_rounded, size: 18),
+                    SizedBox(width: 12),
+                    Text('Terminal Settings'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
@@ -162,6 +201,15 @@ class _TerminalPageState extends ConsumerState<TerminalPage> {
                           constraints: const BoxConstraints(
                             maxHeight: 150,
                           ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceSecondary,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: AppTheme.textTertiary.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
                           child: TextField(
                             controller: _commandController,
                             focusNode: _commandFocusNode,
@@ -170,10 +218,13 @@ class _TerminalPageState extends ConsumerState<TerminalPage> {
                             textInputAction: TextInputAction.newline,
                             decoration: InputDecoration(
                               hintText: 'Type command...',
-                              border: const OutlineInputBorder(),
+                              hintStyle: TextStyle(color: AppTheme.textTertiary),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
-                                vertical: 12,
+                                vertical: 14,
                               ),
                               suffixIcon: _commandController.text.isNotEmpty
                                   ? IconButton(
@@ -224,6 +275,14 @@ class _TerminalPageState extends ConsumerState<TerminalPage> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => const TerminalSettingsPage(),
+      ),
+    );
+  }
+
+  void _showMonitoring(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MonitoringPage(sessionId: widget.sessionId),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/app_theme.dart';
 
 class InputAccessoryBar extends StatelessWidget {
   const InputAccessoryBar({
@@ -12,7 +13,7 @@ class InputAccessoryBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 48,
-      color: Theme.of(context).colorScheme.surface.withOpacity(0.95),
+      color: AppTheme.surface,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -62,21 +63,21 @@ class _KeyButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Material(
-        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(6),
+        color: AppTheme.surfaceFilled,
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(6),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: icon != null
-                ? Icon(icon, size: 18, color: Colors.white)
+                ? Icon(icon, size: 18, color: AppTheme.textPrimary)
                 : Text(
                     label!,
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
           ),

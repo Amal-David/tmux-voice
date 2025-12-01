@@ -35,24 +35,57 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(existingKey == null ? 'Add variable' : 'Edit ${existingKey}'),
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          existingKey == null ? 'Add variable' : 'Edit ${existingKey}',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: keyController,
-              decoration: const InputDecoration(labelText: 'Key', hintText: 'e.g. API_URL'),
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceFilled,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextField(
+                controller: keyController,
+                decoration: const InputDecoration(
+                  labelText: 'Key',
+                  hintText: 'e.g. API_URL',
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.all(16),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: valueController,
-              decoration: const InputDecoration(labelText: 'Value', hintText: 'https://...'),
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceFilled,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextField(
+                controller: valueController,
+                decoration: const InputDecoration(
+                  labelText: 'Value',
+                  hintText: 'https://...',
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.all(16),
+                ),
+              ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Save')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Save', style: TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.w600)),
+          ),
         ],
       ),
     );
@@ -68,11 +101,19 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete variable?'),
-        content: Text('Remove $key from saved variables?'),
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete variable?', style: TextStyle(fontWeight: FontWeight.w600)),
+        content: Text('Remove $key from saved variables?', style: const TextStyle(color: AppTheme.textSecondary)),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete', style: TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.w600)),
+          ),
         ],
       ),
     );
@@ -89,15 +130,11 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
+        centerTitle: true,
+        backgroundColor: AppTheme.backgroundBase,
+        elevation: 0,
         leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceFilled,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.arrow_back, size: 20),
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: AppTheme.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -114,35 +151,36 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              GradientCard(
-                gradient: AppTheme.purpleSoftGradient,
-                padding: const EdgeInsets.all(24),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: AppTheme.elevation1,
+                ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(16),
+                        color: AppTheme.accentPurple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Icon(Icons.mic_rounded, color: Colors.white, size: 32),
+                      child: const Icon(Icons.mic_rounded, color: AppTheme.activePurple, size: 28),
                     ),
-                    const SizedBox(width: 20),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Voice Commands',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             settings.voiceEnabled ? 'Enabled' : 'Disabled',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 14,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
                           ),
                         ],
                       ),
@@ -150,7 +188,7 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
                     CupertinoSwitch(
                       value: settings.voiceEnabled,
                       onChanged: (value) => ref.read(voiceSettingsProvider.notifier).setVoiceEnabled(value),
-                      activeColor: Colors.white,
+                      activeColor: AppTheme.activePurple,
                     ),
                   ],
                 ),
@@ -174,20 +212,31 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              BelieveCard(
+              Container(
                 padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: AppTheme.elevation1,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Speech-to-Text Provider',
-                      style: Theme.of(context).textTheme.titleSmall,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<SttProvider>(
                       value: settings.sttProvider,
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.record_voice_over, color: AppTheme.accentTeal),
+                        filled: true,
+                        fillColor: AppTheme.surfaceFilled,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                       items: const [
                         DropdownMenuItem(
@@ -208,26 +257,37 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
                     const SizedBox(height: 8),
                     const Text(
                       'On-device mode uses the system speech recognizer so you can try voice commands without API keys.',
-                      style: TextStyle(fontSize: 12, color: Colors.white70),
+                      style: TextStyle(fontSize: 12, color: AppTheme.textTertiary),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
-              BelieveCard(
+              Container(
                 padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: AppTheme.elevation1,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'LLM Provider',
-                      style: Theme.of(context).textTheme.titleSmall,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<LlmProvider>(
                       value: settings.llmProvider,
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.psychology, color: AppTheme.primaryPurple),
+                        filled: true,
+                        fillColor: AppTheme.surfaceFilled,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                       items: const [
                         DropdownMenuItem(value: LlmProvider.geminiFlash, child: Text('Gemini 2.0 Flash')),
@@ -261,8 +321,13 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              BelieveCard(
+              Container(
                 padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: AppTheme.elevation1,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -280,7 +345,7 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
                         Expanded(
                           child: Text(
                             'Groq API Key',
-                            style: Theme.of(context).textTheme.titleSmall,
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -294,15 +359,7 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
                       obscureText: true,
                       onChanged: (value) => ref.read(voiceSettingsProvider.notifier).updateKeys(groqKey: value),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              BelieveCard(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                    const SizedBox(height: 24),
                     Row(
                       children: [
                         Container(
@@ -317,7 +374,7 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
                         Expanded(
                           child: Text(
                             'Gemini API Key',
-                            style: Theme.of(context).textTheme.titleSmall,
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -337,47 +394,61 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
               const SizedBox(height: 32),
 
               // SSH Keys Section
-              BelieveCard(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SshKeysPage()),
+              Container(
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: AppTheme.elevation1,
                 ),
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.accentTeal.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(CupertinoIcons.lock_shield, color: AppTheme.accentTeal, size: 24),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SshKeysPage()),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'SSH Keys',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimary,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentTeal.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(CupertinoIcons.lock_shield, color: AppTheme.accentTeal, size: 24),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'SSH Keys',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Generate and manage SSH keys',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Generate and manage SSH keys',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
+                          const Icon(CupertinoIcons.chevron_right, color: AppTheme.textTertiary, size: 20),
                         ],
                       ),
                     ),
-                    const Icon(CupertinoIcons.chevron_right, color: AppTheme.textTertiary, size: 20),
-                  ],
+                  ),
                 ),
               ),
 
@@ -446,22 +517,27 @@ class _VoiceSettingsPageState extends ConsumerState<VoiceSettingsPage> {
                   return Column(
                     children: [
                       for (final entry in entries)
-                        Card(
+                        Container(
                           margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: AppTheme.elevation1,
+                          ),
                           child: ListTile(
-                            title: Text(entry.key, style: Theme.of(context).textTheme.titleSmall),
-                            subtitle: Text(entry.value, style: Theme.of(context).textTheme.bodySmall),
+                            title: Text(entry.key, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                            subtitle: Text(entry.value, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary)),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
                                   tooltip: 'Edit',
-                                  icon: const Icon(Icons.edit_outlined, size: 18),
+                                  icon: const Icon(Icons.edit_outlined, size: 18, color: AppTheme.textSecondary),
                                   onPressed: () => _showEnvVarDialog(existingKey: entry.key, existingValue: entry.value),
                                 ),
                                 IconButton(
                                   tooltip: 'Delete',
-                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                                  icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 18),
                                   onPressed: () => _confirmDeleteEnvVar(entry.key),
                                 ),
                               ],

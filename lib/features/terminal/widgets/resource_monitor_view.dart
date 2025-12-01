@@ -426,14 +426,223 @@ class _DockerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final available = info?.available ?? false;
     return Card(
-      child: ListTile(
-        leading: Icon(Icons.dns, color: available ? Colors.tealAccent : Colors.grey),
-        title: const Text('Docker'),
-        subtitle: available
-            ? Text(
-                '${info!.runningContainers} running / ${info!.totalContainers} containers\n${info!.composeStacks} compose projects detected',
-              )
-            : const Text('Docker not detected on this host'),
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(Icons.dns, color: available ? Colors.tealAccent : Colors.grey),
+            title: const Text('Docker'),
+            subtitle: available
+                ? Text(
+                    '${info!.runningContainers} running / ${info!.totalContainers} containers\n${info!.composeStacks} compose projects detected',
+                  )
+                : const Text('Docker not detected on this host'),
+            trailing: available
+                ? IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: () => _showDockerDetails(context),
+                  )
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDockerDetails(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const _DockerDetailsPage(),
+      ),
+    );
+  }
+}
+
+class _DockerDetailsPage extends ConsumerStatefulWidget {
+  const _DockerDetailsPage();
+
+  @override
+  ConsumerState<_DockerDetailsPage> createState() => _DockerDetailsPageState();
+}
+
+class _DockerDetailsPageState extends ConsumerState<_DockerDetailsPage> {
+  List<DockerContainer>? _containers;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadContainers();
+  }
+
+  Future<void> _loadContainers() async {
+    setState(() => _loading = true);
+    // TODO: Fetch actual container list from SSH
+    // For now, simulate
+    await Future.delayed(const Duration(seconds: 1));
+    setState(() {
+      _containers = [
+        DockerContainer(
+          id: 'abc123',
+          name: 'web-app',
+          image: 'nginx:latest',
+          status: 'running',
+          ports: '80:80, 443:443',
+        ),
+        DockerContainer(
+          id: 'def456',
+          name: 'database',
+          image: 'postgres:14',
+          status: 'running',
+          ports: '5432:5432',
+        ),
+      ];
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Docker Containers'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadContainers,
+          ),
+        ],
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _containers == null || _containers!.isEmpty
+              ? const Center(child: Text('No containers found'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _containers!.length,
+                  itemBuilder: (context, index) {
+                    final container = _containers![index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.widgets,
+                          color: container.status == 'running' ? Colors.green : Colors.grey,
+                        ),
+                        title: Text(container.name),
+                        subtitle: Text(
+                          '${container.image}\n${container.status} • ${container.ports}',
+                        ),
+                        isThreeLine: true,
+                        trailing: IconButton(
+                          icon: const Icon(Icons.article_outlined),
+                          onPressed: () => _showContainerLogs(context, container),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+    );
+  }
+
+  void _showContainerLogs(BuildContext context, DockerContainer container) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _ContainerLogsView(container: container),
+    );
+  }
+}
+
+class DockerContainer {
+  final String id;
+  final String name;
+  final String image;
+  final String status;
+  final String ports;
+
+  DockerContainer({
+    required this.id,
+    required this.name,
+    required this.image,
+    required this.status,
+    required this.ports,
+  });
+}
+
+class _ContainerLogsView extends StatefulWidget {
+  const _ContainerLogsView({required this.container});
+
+  final DockerContainer container;
+
+  @override
+  State<_ContainerLogsView> createState() => _ContainerLogsViewState();
+}
+
+class _ContainerLogsViewState extends State<_ContainerLogsView> {
+  String _logs = '';
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLogs();
+  }
+
+  Future<void> _loadLogs() async {
+    setState(() => _loading = true);
+    // TODO: Fetch actual logs from SSH: docker logs ${widget.container.name} --tail 100
+    await Future.delayed(const Duration(seconds: 1));
+    setState(() {
+      _logs = '''
+[2024-01-15 10:30:45] Starting container ${widget.container.name}
+[2024-01-15 10:30:46] Initializing...
+[2024-01-15 10:30:47] Service ready on port ${widget.container.ports}
+[2024-01-15 10:30:50] Accepting connections
+[2024-01-15 10:31:00] Health check passed
+''';
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.8,
+      child: Column(
+        children: [
+          AppBar(
+            title: Text('Logs: ${widget.container.name}'),
+            automaticallyImplyLeading: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: _loadLogs,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : Container(
+                    color: Colors.black,
+                    padding: const EdgeInsets.all(16),
+                    child: SingleChildScrollView(
+                      child: SelectableText(
+                        _logs,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }

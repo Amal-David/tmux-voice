@@ -110,7 +110,7 @@ class _TerminalLoadingPageState extends ConsumerState<TerminalLoadingPage>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E1A),
+      backgroundColor: AppTheme.backgroundBase,
       body: SafeArea(
         child: Center(
           child: Column(
@@ -121,7 +121,7 @@ class _TerminalLoadingPageState extends ConsumerState<TerminalLoadingPage>
               Text(
                 'Connecting to',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white70,
+                      color: AppTheme.textSecondary,
                       letterSpacing: 0.5,
                     ),
               ),
@@ -129,7 +129,7 @@ class _TerminalLoadingPageState extends ConsumerState<TerminalLoadingPage>
               Text(
                 widget.sessionLabel,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: Colors.white,
+                      color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w600,
                     ),
               ),
@@ -139,7 +139,7 @@ class _TerminalLoadingPageState extends ConsumerState<TerminalLoadingPage>
               Text(
                 _getLoadingMessage(session),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white60,
+                      color: AppTheme.textSecondary,
                     ),
               ),
             ],
@@ -199,8 +199,8 @@ class _AnimatedConnectingIcon extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppTheme.primaryPurple.withOpacity(0.3),
-                      AppTheme.primaryPurple.withOpacity(0.0),
+                      AppTheme.activeTeal.withOpacity(0.2),
+                      AppTheme.activeTeal.withOpacity(0.0),
                     ],
                   ),
                 ),
@@ -215,7 +215,7 @@ class _AnimatedConnectingIcon extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: AppTheme.primaryPurple.withOpacity(0.5),
+                    color: AppTheme.activeTeal.withOpacity(0.4),
                     width: 2,
                   ),
                 ),
@@ -227,18 +227,18 @@ class _AnimatedConnectingIcon extends StatelessWidget {
               height: 60,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: AppTheme.purpleSoftGradient,
+                color: AppTheme.accentTeal,
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primaryPurple.withOpacity(0.5),
+                    color: AppTheme.activeTeal.withOpacity(0.3),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),
                 ],
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.terminal,
-                color: Colors.white,
+                color: AppTheme.activeTeal,
                 size: 30,
               ),
             ),
@@ -274,7 +274,7 @@ class _LoadingDots extends StatelessWidget {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryPurple.withOpacity(0.5 + (scale * 0.5)),
+                    color: AppTheme.activeTeal.withOpacity(0.5 + (scale * 0.5)),
                     shape: BoxShape.circle,
                   ),
                 ),

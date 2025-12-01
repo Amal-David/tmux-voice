@@ -62,12 +62,6 @@ class TerminalSettingsPage extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          _Section(
-            title: 'Command Snippets',
-            icon: Icons.code,
-            child: const _SnippetsManager(),
-          ),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/app_theme.dart';
 
 import '../models/terminal_settings.dart';
 import '../state/quick_commands_provider.dart';
@@ -23,9 +24,9 @@ class QuickCommandsBar extends ConsumerWidget {
     return Container(
       height: 42,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
+        color: AppTheme.surface,
         border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.1)),
+          top: BorderSide(color: AppTheme.textTertiary.withOpacity(0.1)),
         ),
       ),
       child: ListView.builder(
@@ -73,7 +74,7 @@ class _CommandChip extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Material(
-        color: Colors.white.withOpacity(0.1),
+        color: AppTheme.accentPurple.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
@@ -86,7 +87,7 @@ class _CommandChip extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'monospace',
-                color: Colors.white,
+                color: AppTheme.activePurple,
               ),
             ),
           ),
@@ -110,7 +111,7 @@ class _SettingsButton extends StatelessWidget {
         onPressed: onTap,
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(),
-        color: Colors.white70,
+        color: AppTheme.textSecondary,
       ),
     );
   }

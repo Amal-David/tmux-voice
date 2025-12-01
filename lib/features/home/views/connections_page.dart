@@ -33,36 +33,38 @@ class ConnectionsPage extends ConsumerWidget {
     final profilesAsync = ref.watch(profilesProvider);
     final sessions = ref.watch(sshSessionsProvider);
     final selectedSessionId = ref.watch(selectedSessionIdProvider);
-    final isRestoringSessions = ref.watch(sessionRestorationProvider);
+    
+    // Find active session (selected or most recent)
+    SshSessionState? activeSession;
+    if (sessions.isNotEmpty) {
+      if (selectedSessionId != null) {
+        activeSession = sessions.firstWhere(
+          (s) => s.id == selectedSessionId,
+          orElse: () => sessions.first,
+        );
+      } else {
+        // Sort by connectedAt desc
+        final sorted = [...sessions]..sort((a, b) => b.connectedAt.compareTo(a.connectedAt));
+        activeSession = sorted.first;
+      }
+    }
+
     final canModifyProfiles = profilesAsync.hasValue;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('tmux-voice'),
+        title: const Text('Tmux Mobile'),
+        centerTitle: true,
         actions: [
           IconButton(
             tooltip: 'Monitoring',
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceFilled,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.monitor_heart_outlined, size: 20),
-            ),
+            icon: const Icon(Icons.monitor_heart_outlined),
             onPressed: () => _showMonitoring(context),
           ),
           IconButton(
             tooltip: 'Settings',
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceFilled,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.settings_outlined, size: 20),
-            ),
+            icon: const Icon(Icons.settings_outlined),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const VoiceSettingsPage()),
             ),
@@ -71,129 +73,78 @@ class ConnectionsPage extends ConsumerWidget {
         ],
       ),
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppTheme.backgroundBase,
-              AppTheme.primaryPurple.withOpacity(0.03),
-              AppTheme.backgroundBase,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
+        color: AppTheme.backgroundBase,
         child: SafeArea(
           top: true,
           bottom: false,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 90),
             children: [
-              const SizedBox(height: 24),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.purpleSoftGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.terminal, size: 24, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Terminal Sessions',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          StackedSessionDeck(
-            sessions: sessions,
-            isRestoring: isRestoringSessions,
-            selectedSessionId: selectedSessionId,
-            onSelect: (session) => ref.read(selectedSessionIdProvider.notifier).state = session.id,
-            onOpen: (session) => _openTerminal(context, ref, session.id),
-            onDisconnect: (session) => _disconnect(context, ref, session.id),
-            onRetry: (session) => ref.read(sshSessionsProvider.notifier).reconnect(session.id),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.tealGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.cloud_outlined, size: 24, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Saved Profiles',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          profilesAsync.when(
-            data: (profiles) {
-              if (profiles.isEmpty) {
-                return const _EmptyState(message: 'No saved profiles yet. Tap + to create one.');
-              }
-              return Column(
-                children: [
-                  for (var i = 0; i < profiles.length; i++)
-                    TweenAnimationBuilder<double>(
-                      duration: Duration(milliseconds: 300 + (i * 100)),
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, value, child) {
-                        return Transform.translate(
-                          offset: Offset(0, 20 * (1 - value)),
-                          child: Opacity(
-                            opacity: value,
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: _ProfileCard(
-                        profile: profiles[i],
-                        onConnect: () => _connect(context, ref, profiles[i]),
-                        onDelete: () => _deleteProfile(context, ref, i),
-                        onEdit: () => _editProfile(context, ref, profiles[i], i),
-                        onUptime: () => _showUptimeQuickSheet(context, ref, profiles[i], i),
-                      ),
+              const SizedBox(height: 12),
+              
+              // Active Session Section
+              if (activeSession != null) ...[
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 12),
+                  child: Text(
+                    'Active Session',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w600,
                     ),
-                ],
-              );
-            },
-            loading: () => const _SectionLoading(),
-            error: (error, _) => _ErrorState(message: 'Failed to load profiles ($error)'),
-          ),
+                  ),
+                ),
+                ActiveSessionCard(
+                  session: activeSession,
+                  onOpen: () => _openTerminal(context, ref, activeSession!.id),
+                  onDisconnect: () => _disconnect(context, ref, activeSession!.id),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Recent Connections Section
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 12),
+                child: Text(
+                  'Recent Connections',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              
+              profilesAsync.when(
+                data: (profiles) {
+                  if (profiles.isEmpty) {
+                    return const _EmptyState(message: 'No connections yet. Tap + to add one.');
+                  }
+                  return Column(
+                    children: [
+                      for (var i = 0; i < profiles.length; i++)
+                        _ProfileCard(
+                          profile: profiles[i],
+                          onConnect: () => _connect(context, ref, profiles[i]),
+                          onDelete: () => _deleteProfile(context, ref, i),
+                          onEdit: () => _editProfile(context, ref, profiles[i], i),
+                          onUptime: () => _showUptimeQuickSheet(context, ref, profiles[i], i),
+                        ),
+                    ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => Center(child: Text('Error: $error')),
+              ),
             ],
           ),
         ),
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          gradient: AppTheme.purpleSoftGradient,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryPurple.withOpacity(0.4),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: FloatingActionButton.extended(
-          onPressed: canModifyProfiles ? () => _openProfileSheet(context, ref) : null,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          icon: const Icon(Icons.add_rounded, size: 24),
-          label: const Text('New Profile', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-        ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: canModifyProfiles ? () => _openProfileSheet(context, ref) : null,
+        backgroundColor: AppTheme.activePurple,
+        elevation: 4,
+        icon: const Icon(Icons.add_rounded, size: 24),
+        label: const Text('New Connection', style: TextStyle(fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -534,133 +485,55 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BelieveCard(
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.purpleSoftGradient,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.dns_outlined, color: Colors.white, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      profile.label,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${profile.username}@${profile.host}:${profile.port}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                tooltip: 'Uptime monitor',
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppTheme.elevation1,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onConnect,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: profile.monitorUptime ? AppTheme.successGreen.withOpacity(0.15) : AppTheme.surfaceFilled,
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppTheme.accentBlue.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(
-                    profile.monitorUptime ? Icons.monitor_heart : Icons.monitor_heart_outlined,
-                    size: 18,
-                    color: profile.monitorUptime ? AppTheme.successGreen : AppTheme.textSecondary,
+                  child: const Icon(Icons.dns_rounded, color: AppTheme.activeBlue, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile.label,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${profile.username}@${profile.host}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
+                      ),
+                    ],
                   ),
                 ),
-                onPressed: onUptime,
-              ),
-              IconButton(
-                tooltip: 'Edit',
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceFilled,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.edit_outlined, size: 18),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20, color: AppTheme.textSecondary),
+                  onPressed: onEdit,
                 ),
-                onPressed: onEdit,
-              ),
-              IconButton(
-                tooltip: 'Delete',
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
-                ),
-                onPressed: onDelete,
-              ),
-            ],
-          ),
-          if (profile.tmuxSession != null && profile.tmuxSession!.trim().isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppTheme.accentTeal.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppTheme.accentTeal.withOpacity(0.3)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.view_compact_alt_outlined, size: 16, color: AppTheme.accentTeal),
-                  const SizedBox(width: 6),
-                  Text(
-                    'tmux: ${profile.tmuxSession}',
-                    style: TextStyle(color: AppTheme.accentTeal, fontSize: 12, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: AppTheme.purpleSoftGradient,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryPurple.withOpacity(0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: BelieveButton(
-                onPressed: onConnect,
-                isFullWidth: true,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(CupertinoIcons.play_fill, size: 18),
-                    SizedBox(width: 8),
-                    Text('Connect Now'),
-                  ],
-                ),
-              ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -762,29 +635,49 @@ class _ProfileFormSheetState extends State<_ProfileFormSheet> {
                 const SizedBox(height: 16),
                 
                 // SSH URL Quick Connect
-                BelieveTextField(
-                  label: 'Quick Connect (Optional)',
-                  hint: 'ssh://user@host:port or user@host',
-                  prefixIcon: const Icon(CupertinoIcons.link),
-                  onChanged: (url) {
-                    final parsed = SshUrlParser.parse(url);
-                    if (parsed != null) {
-                      if (parsed.username != null) {
-                        _usernameController.text = parsed.username!;
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceFilled,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Quick Connect (Optional)',
+                      hintText: 'ssh://user@host:port or user@host',
+                      prefixIcon: const Icon(CupertinoIcons.link, color: AppTheme.accentTeal),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.all(16),
+                    ),
+                    onChanged: (url) {
+                      final parsed = SshUrlParser.parse(url);
+                      if (parsed != null) {
+                        if (parsed.username != null) {
+                          _usernameController.text = parsed.username!;
+                        }
+                        _hostController.text = parsed.host;
+                        _portController.text = parsed.port.toString();
                       }
-                      _hostController.text = parsed.host;
-                      _portController.text = parsed.port.toString();
-                    }
-                  },
+                    },
+                  ),
                 ),
                 const SizedBox(height: 20),
                 
-                BelieveTextField(
-                  controller: _labelController,
-                  label: 'Label',
-                  hint: 'My Server',
-                  prefixIcon: const Icon(CupertinoIcons.tag),
-                  validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceFilled,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: TextFormField(
+                    controller: _labelController,
+                    decoration: InputDecoration(
+                      labelText: 'Label',
+                      hintText: 'My Server',
+                      prefixIcon: const Icon(CupertinoIcons.tag, color: AppTheme.primaryPurple),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.all(16),
+                    ),
+                    validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 
@@ -794,29 +687,49 @@ class _ProfileFormSheetState extends State<_ProfileFormSheet> {
                   children: [
                     Expanded(
                       flex: 3,
-                      child: BelieveTextField(
-                        controller: _hostController,
-                        label: 'Host',
-                        hint: 'server.example.com',
-                        prefixIcon: const Icon(CupertinoIcons.globe),
-                        validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceFilled,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: TextFormField(
+                          controller: _hostController,
+                          decoration: InputDecoration(
+                            labelText: 'Host',
+                            hintText: 'server.example.com',
+                            prefixIcon: const Icon(CupertinoIcons.globe, color: AppTheme.accentBlue),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       flex: 1,
-                      child: BelieveTextField(
-                        controller: _portController,
-                        label: 'Port',
-                        hint: '22',
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          final port = int.tryParse(value ?? '');
-                          if (port == null || port <= 0) {
-                            return 'Invalid';
-                          }
-                          return null;
-                        },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceFilled,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: TextFormField(
+                          controller: _portController,
+                          decoration: const InputDecoration(
+                            labelText: 'Port',
+                            hintText: '22',
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(16),
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            final port = int.tryParse(value ?? '');
+                            if (port == null || port <= 0) {
+                              return 'Invalid';
+                            }
+                            return null;
+                          },
+                        ),
                       ),
                     ),
                   ],
@@ -828,22 +741,42 @@ class _ProfileFormSheetState extends State<_ProfileFormSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: BelieveTextField(
-                        controller: _usernameController,
-                        label: 'Username',
-                        hint: 'admin',
-                        prefixIcon: const Icon(CupertinoIcons.person),
-                        validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceFilled,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: TextFormField(
+                          controller: _usernameController,
+                          decoration: InputDecoration(
+                            labelText: 'Username',
+                            hintText: 'admin',
+                            prefixIcon: const Icon(CupertinoIcons.person, color: AppTheme.textSecondary),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: BelieveTextField(
-                        controller: _passwordController,
-                        label: 'Password',
-                        hint: 'Optional',
-                        prefixIcon: const Icon(CupertinoIcons.lock),
-                        obscureText: true,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceFilled,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: TextFormField(
+                          controller: _passwordController,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            hintText: 'Optional',
+                            prefixIcon: const Icon(CupertinoIcons.lock, color: AppTheme.textSecondary),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          obscureText: true,
+                        ),
                       ),
                     ),
                   ],
@@ -875,11 +808,23 @@ class _ProfileFormSheetState extends State<_ProfileFormSheet> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                BelieveTextField(
-                  controller: _privateKeyController,
-                  hint: 'Paste PEM key or select file below',
-                  minLines: 3,
-                  maxLines: 5,
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.textTertiary.withOpacity(0.1)),
+                  ),
+                  child: TextFormField(
+                    controller: _privateKeyController,
+                    decoration: const InputDecoration(
+                      hintText: 'Paste PEM key or select file below',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                    minLines: 3,
+                    maxLines: 5,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 ValueListenableBuilder<TextEditingValue>(
@@ -906,17 +851,23 @@ class _ProfileFormSheetState extends State<_ProfileFormSheet> {
                   },
                 ),
                 const SizedBox(height: 12),
-                BelieveSecondaryButton(
+                OutlinedButton(
                   onPressed: _pickPrivateKeyFile,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.textPrimary,
+                    side: BorderSide(color: AppTheme.textTertiary.withOpacity(0.3)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                   child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(CupertinoIcons.folder, size: 18),
-                            SizedBox(width: 8),
-                            Text('Choose Key File (PEM/PPK)'),
-                          ],
-                        ),
-                      ),
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(CupertinoIcons.folder, size: 18),
+                      SizedBox(width: 8),
+                      Text('Choose Key File (PEM/PPK)'),
+                    ],
+                  ),
+                ),
                     ],
                   ),
                 ),
@@ -979,10 +930,21 @@ class _ProfileFormSheetState extends State<_ProfileFormSheet> {
                       ),
                       if (_autoAttachTmux) ...[
                         const SizedBox(height: 16),
-                        BelieveTextField(
-                          controller: _tmuxController,
-                          hint: 'session-name (optional)',
-                          prefixIcon: const Icon(CupertinoIcons.textformat),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppTheme.textTertiary.withOpacity(0.1)),
+                          ),
+                          child: TextFormField(
+                            controller: _tmuxController,
+                            decoration: InputDecoration(
+                              hintText: 'session-name (optional)',
+                              prefixIcon: const Icon(CupertinoIcons.textformat, color: AppTheme.textSecondary),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.all(16),
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -990,10 +952,34 @@ class _ProfileFormSheetState extends State<_ProfileFormSheet> {
                 ),
                 const SizedBox(height: 24),
                 
-                BelieveButton(
-                  onPressed: _submit,
-                  isFullWidth: true,
-                  child: Text(widget.initialProfile == null ? 'Save Profile' : 'Save Changes'),
+                SizedBox(
+                  width: double.infinity,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.purpleSoftGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryPurple.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: Text(
+                        widget.initialProfile == null ? 'Save Profile' : 'Save Changes',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                      ),
+                    ),
+                  ),
                 )
               ],
               ),
