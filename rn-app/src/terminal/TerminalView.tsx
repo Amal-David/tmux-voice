@@ -28,9 +28,9 @@ export const TerminalView: React.FC<TerminalViewProps> = ({
       }
       setLines(buffer);
     };
-    terminal.onData(handler);
+    const disposable = terminal.onRender(handler);
     handler();
-    return () => terminal.offData(handler);
+    return () => disposable.dispose();
   }, [terminal]);
 
   useEffect(() => {

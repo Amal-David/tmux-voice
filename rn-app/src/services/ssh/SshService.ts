@@ -67,6 +67,7 @@ export class SshService extends EventEmitter {
         .on('data', data => {
           const chunk = data.toString('utf8');
           this.terminal.write(chunk);
+          this.emit('terminal', {type: 'data', payload: chunk});
         })
         .on('close', () => this.emit('terminal', {type: 'closed'}))
         .stderr.on('data', data => this.deps.logger?.('ssh:stderr', {data: data.toString()}));
